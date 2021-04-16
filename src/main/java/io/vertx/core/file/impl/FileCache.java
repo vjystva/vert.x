@@ -10,6 +10,7 @@
  */
 package io.vertx.core.file.impl;
 
+import io.vertx.core.VertxException;
 import io.vertx.core.impl.Utils;
 
 import java.io.File;
@@ -43,7 +44,7 @@ class FileCache {
 
     // the cacheDir will be suffixed a unique id to avoid eavesdropping from other processes/users
     // also this ensures that if process A deletes cacheDir, it won't affect process B
-    String cacheDirName = fileCacheDir + "-" + UUID.randomUUID().toString();
+    String cacheDirName = fileCacheDir + "-" + UUID.randomUUID();
     File cacheDir = new File(cacheDirName);
     // Create the cache directory
     try {
@@ -175,5 +176,13 @@ class FileCache {
   void cacheDir(String fileName) {
     File file = new File(cacheDir, fileName);
     file.mkdirs();
+  }
+
+  void fileNameCheck(String fileName) throws IOException {
+    File destinationFile = new File(cacheDir, fileName);
+    String canonicalDestinationFile = destinationFile.getCanonicalPath();
+    if (!canonicalDestinationFile.startsWith(cacheDir + File.separator)) {
+      throw new VertxException("file is outside of the cacheDir dir: " + fileName);
+    }
   }
 }

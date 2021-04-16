@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Enumeration;
-import java.util.function.IntPredicate;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -255,6 +254,8 @@ public class FileResolver {
         ZipEntry entry = entries.nextElement();
         String name = entry.getName();
         if (name.startsWith(fileName)) {
+          // protect from zip slip
+          cache.fileNameCheck(name);
           if (name.endsWith("/")) {
             // Directory
             cache.cacheDir(name);
