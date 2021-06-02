@@ -90,6 +90,7 @@ public class Http1xClientConnection extends Http1xConnectionBase<WebSocketImpl> 
   private Handler<Void> evictionHandler = DEFAULT_EVICTION_HANDLER;
   private Handler<Object> invalidMessageHandler = INVALID_MSG_HANDLER;
   private boolean close;
+  private boolean closeRedirectionResponse;
   private boolean shutdown;
   private long shutdownTimerID = -1L;
   private boolean isConnect;
@@ -671,6 +672,7 @@ public class Http1xClientConnection extends Http1xConnectionBase<WebSocketImpl> 
       } else {
         version = io.vertx.core.http.HttpVersion.HTTP_1_1;
       }
+
       handleResponseBegin(stream, new HttpResponseHead(
         version,
         response.status().code(),
@@ -678,6 +680,9 @@ public class Http1xClientConnection extends Http1xConnectionBase<WebSocketImpl> 
         new HeadersAdaptor(response.headers())));
     } else if (obj instanceof HttpContent) {
       HttpContent chunk = (HttpContent) obj;
+      if(closeRedirectionResponse) {
+        chunk = new DefaultLastHttpContent();
+      }
       if (chunk.content().isReadable()) {
         handleResponseChunk(stream, chunk.content());
       }
@@ -725,6 +730,11 @@ public class Http1xClientConnection extends Http1xConnectionBase<WebSocketImpl> 
           } else if (response.version == HttpVersion.HTTP_1_0 && !HttpHeaderValues.KEEP_ALIVE.contentEqualsIgnoreCase(responseConnectionHeader)) {
             // In the HTTP/1.0 case both request/response need a keep-alive connection header the connection to be persistent
             // currently Vertx forces the Connection header if keepalive is enabled for 1.0
+            this.close = true;
+          }
+
+          if(response.statusCode == 301 || response.statusCode == 302 || response.statusCode == 303 || response.statusCode == 307 || response.statusCode == 308) {
+            this.closeRedirectionResponse = true;
             this.close = true;
           }
           String keepAliveHeader = response.headers.get(HttpHeaderNames.KEEP_ALIVE);
